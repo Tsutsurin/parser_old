@@ -88,9 +88,12 @@ for vul_link in vul_links:
     #table = soup.find(class_="table table-striped attr-view-table")
     #print(table)
     tds = soup.find_all("td")
-    for i in range(40):
-        print(i)
-        print(tds[i])
+    for i in [3, 5, 19, 23, 39]:
+        # получаем элемент по индексу
+        td = tds[i]
+        # получаем текст из элемента
+        text = td.text.strip()
+        print(text)
 
 # выводим список словарей с информацией об уязвимостях
 print(vul_infos)
