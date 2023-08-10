@@ -1,0 +1,152 @@
+from selenium import webdriver
+from selenium.webdriver.edge.service import Service
+from bs4 import BeautifulSoup
+import pandas as pd
+import time
+import random
+import requests
+import re
+
+number = []
+source = []
+score = []
+all_problem_data = []
+all_problem_cve = []
+all_problem_cvss = []
+all_problem_product = []
+all_problem_url = []
+
+num_pages = 1
+service = Service(r'msedgedriver.exe')
+options = webdriver.EdgeOptions()
+
+# добавляем аргументы для скрытия webdriver и игнорирования ошибок сертификата
+options.add_argument("--disable-blink-features=AutomationControlled")
+options.add_argument("--disable-infobars")
+options.add_argument("--start-maximized")
+options.add_argument("--ignore-certificate-errors")
+#options.add_argument("--headless")
+
+# создаем объект драйвера для браузера Edge с заданными опциями и сервисом
+driver = webdriver.Edge(options=options, service=service)
+
+for page in range(1, num_pages + 1):
+    url = "https://bdu.fstec.ru/vul?sort=datv&page=" + str(page)
+    driver.get(url)
+    html = driver.page_source
+    time.sleep(random.uniform(2, 3))
+    soup = BeautifulSoup(html, "lxml")
+    tds = soup.find_all("td", class_="col-lg-3 col-xs-3")
+    
+    for td in tds:
+        links = td.find_all("a", class_="confirm-vul")
+        for link in links:
+            href = link["href"]
+            vul_link = "https://bdu.fstec.ru" + href
+            all_problem_url.append(vul_link)
+
+for vul_link in all_problem_url:
+    source.append("ФСТЭК")
+    
+    driver.get(vul_link)
+    html = driver.page_source
+    time.sleep(random.uniform(2, 3))
+    
+    soup = BeautifulSoup(html, "lxml")
+    tds = soup.find_all("td")
+    problem_product = tds[3].text.strip() + " " + tds[5].text.strip()
+    all_problem_product.append(problem_product)
+
+    all_problem_data.append(tds[19].text.strip())
+
+    cvss = tds[23].text.strip()
+    pattern = r"\d+(?:,\d+)?"
+    number = re.findall(pattern, cvss)
+    size = len(number) - 1
+    problem_cvss = number[size].replace(',', '.')
+    all_problem_cvss.append(problem_cvss)
+
+    cve = tds[39].text.strip()
+    pattern = r"CVE: "
+    problem_cve = re.sub(pattern, "", cve)
+    all_problem_cve.append(problem_cve)
+
+driver.close()
+
+#NKTSKI
+proxy = {}
+
+for page in range(1, num_pages + 1):
+    url = "https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1=" + str(page)
+    # Отправляем запрос к сайту с использованием прокси
+    link = requests.get(url, proxies=proxy)
+    soup = BeautifulSoup(link.text, "lxml")
+    time.sleep(5)
+
+    problem_links = [elem.get("href") for elem in soup.find_all("a", title="Подробнее")]
+    problem_url = ["https://safe-surf.ru" + link for link in problem_links]
+
+    problem_data = [elem.get_text().strip().replace("Дата бюллетеня", "") for elem in
+                    soup.find_all(class_="cell-bulletin-nkcki cell-1")]
+    problem_data = list(filter(bool, problem_data))
+    problem_data = [elem.lstrip() for elem in problem_data]
+
+    problem_cve = [elem.get_text().strip().replace("Идентификатор уязвимости", "") for elem in
+                   soup.find_all(class_="cell-bulletin-nkcki cell-2")]
+    problem_cve = list(filter(bool, problem_cve))
+    problem_cve = [elem.lstrip() for elem in problem_cve]
+    problem_cve = [elem.strip().replace("MITRE:", "") for elem in problem_cve]
+
+    problem_product = [elem.get_text().strip().replace("Уязвимый продукт", "") for elem in
+                       soup.find_all(class_="cell-bulletin-nkcki cell-3")]
+    problem_product = list(filter(bool, problem_product))
+    problem_product = [elem.lstrip() for elem in problem_product]
+    problem_product = [elem.replace("\n", "") for elem in problem_product]
+    problem_product = [re.sub("                                                                                                                                 ", "     ", elem) for elem in problem_product]
+
+    problem_cvss = [elem.get_text().strip().replace("Уровень опасности", "") for elem in
+                    soup.find_all(class_="cell-bulletin-nkcki cell-4")]
+    problem_cvss = list(filter(bool, problem_cvss))
+    problem_cvss = [elem.lstrip() for elem in problem_cvss]
+    problem_cvss = [elem.replace("\n", "") for elem in problem_cvss]
+    problem_cvss = [re.sub("\\s+", " ", elem) for elem in problem_cvss]
+
+    all_problem_data.extend(problem_data)
+    all_problem_cve.extend(problem_cve)
+    all_problem_cvss.extend(problem_cvss)
+    all_problem_product.extend(problem_product)
+    all_problem_url.extend(problem_url)
+
+    for _ in range(len(problem_data)):
+        source.append("НКЦКИ")
+
+all_problem_cvss_edited = []
+for j in range(len(all_problem_cvss)):
+    pattern = r"\d+(?:.\d+)?"
+    number = re.findall(pattern, all_problem_cvss[j])
+    if len(number) == 1:
+        if float(number[0]) < 4:
+            all_problem_cvss[j] = f"{number[0]} Low"
+        elif float(number[0]) < 7:
+            all_problem_cvss[j] = f"{number[0]} Medium"
+        elif float(number[0]) < 9:
+            all_problem_cvss[j] = f"{number[0]} High"
+        else:
+            all_problem_cvss[j] = f"{number[0]} Critical"
+    else:
+        all_problem_cvss[j] = "-"
+    all_problem_cvss_edited.append(all_problem_cvss[j])
+
+for _ in range(len(all_problem_url)):
+    number.append(_ + 1)
+
+df = pd.DataFrame({"№": number,
+                   "Источник": source,
+                   "Дата публикации": all_problem_data,
+                   "CVE": all_problem_cve,
+                   "CVSS": all_problem_cvss_edited,
+                   "Продукт": all_problem_product,
+                   "Ссылка": all_problem_url})
+
+with pd.ExcelWriter('problem_table.xlsx') as writer:
+   df.to_excel(writer, sheet_name='Проблемы', index=False)
