@@ -25,7 +25,7 @@ options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-infobars")
 options.add_argument("--start-maximized")
 options.add_argument("--ignore-certificate-errors")
-#options.add_argument("--headless")
+options.add_argument("--headless")
 
 # создаем объект драйвера для браузера Edge с заданными опциями и сервисом
 driver = webdriver.Edge(options=options, service=service)
@@ -78,8 +78,7 @@ proxy = {}
 
 for page in range(1, num_pages + 1):
     url = "https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1=" + str(page)
-    # Отправляем запрос к сайту с использованием прокси
-    link = requests.get(url, proxies=proxy)
+    link = requests.get(url)
     soup = BeautifulSoup(link.text, "lxml")
     time.sleep(5)
 
