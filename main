@@ -3,13 +3,14 @@ from selenium.webdriver.edge.service import Service
 from collections import Counter
 from bs4 import BeautifulSoup
 from datetime import datetime
+from datetime import date
 import pandas as pd
 import time
-import random
 import requests
 import re
 
-number = []
+
+number_table = []
 source = []
 status = []
 all_problem_data = []
@@ -20,8 +21,14 @@ all_problem_url = []
 all_problem_cve_edited = []
 all_problem_cvss_edited = []
 
+action = int(input("action "))
 num_pages = int(input("number "))
 proxy = input("proxy ")
+
+if action == 1:
+    df_old = pd.read_excel("problem_table.xlsx")
+    old_cve = df_old["CVE"].tolist()
+    old_url = df_old["Ссылка"].tolist()
 
 service = Service(r'msedgedriver.exe')
 options = webdriver.EdgeOptions()
@@ -41,7 +48,6 @@ for page in range(1, num_pages + 1):
 
     html = driver.page_source
 
-    time.sleep(random.uniform(2, 3))
     soup = BeautifulSoup(html, "lxml")
 
     tds = soup.find_all("td", class_="col-lg-3 col-xs-3")
@@ -53,14 +59,18 @@ for page in range(1, num_pages + 1):
             href = link["href"]
 
             vul_link = "https://bdu.fstec.ru" + href
-            all_problem_url.append(vul_link)
+            if action == 1:
+                if vul_link in old_url:
+                    print("this url is a repeat")
+                else:
+                    all_problem_url.append(vul_link)
+            else:
+                all_problem_url.append(vul_link)
 
 for vul_link in all_problem_url:
     driver.get(vul_link)
 
     html = driver.page_source
-
-    time.sleep(random.uniform(2, 3))
 
     soup = BeautifulSoup(html, "lxml")
     tds = soup.find_all("td")
@@ -102,9 +112,24 @@ for page in range(1, num_pages + 1):
 
     problem_links = [elem.get("href") for elem in soup.find_all("a", title="Подробнее")]
     problem_url = ["https://safe-surf.ru" + link for link in problem_links]
+    if action == 1:
+        size_for_repeat = len(problem_url) - 1
+        print(size_for_repeat)
+        counter = []
+        for i in range(size_for_repeat):
+            if problem_url[i] in old_url:
+                print("this url is a repeat")
+            else:
+                counter.append(i)
+        if counter:
+            counter = counter[0]
+        else:
+            counter = len(problem_url)
+    else:
+        counter = len(problem_url)
 
     problem_data = [elem.get_text().strip().replace("Дата бюллетеня", "") for elem in
-                    soup.find_all(class_="cell-bulletin-nkcki cell-1")]
+                   soup.find_all(class_="cell-bulletin-nkcki cell-1")]
     problem_data = list(filter(bool, problem_data))
     problem_data = [elem.lstrip() for elem in problem_data]
 
@@ -130,14 +155,12 @@ for page in range(1, num_pages + 1):
     problem_cvss = [elem.replace("\n", "") for elem in problem_cvss]
     problem_cvss = [re.sub("\\s+", " ", elem) for elem in problem_cvss]
 
-    all_problem_cve.extend(problem_cve)
-    all_problem_cvss.extend(problem_cvss)
-
-    all_problem_data.extend(problem_data)
-    all_problem_product.extend(problem_product)
-    all_problem_url.extend(problem_url)
-
-    for _ in range(len(problem_data)):
+    for i in range(counter):
+        all_problem_cve.append(problem_cve[i])
+        all_problem_cvss.append(problem_cvss[i])
+        all_problem_data.append(problem_data[i])
+        all_problem_product.append(problem_product[i])
+        all_problem_url.append(problem_url[i])
         source.append("НКЦКИ")
 
 for cve in all_problem_cve:
@@ -165,23 +188,47 @@ for j in range(len(all_problem_cvss)):
         all_problem_cvss[j] = "-"
     all_problem_cvss_edited.append(all_problem_cvss[j])
 
-counter = Counter(all_problem_cve_edited)
+if action == 1:
+    all_cve = old_cve + all_problem_cve_edited
+    print(all_cve)
+else:
+    all_cve = all_problem_cve_edited
+counter = Counter(all_cve)
+print(all_problem_data)
 dates = [datetime.strptime(date, "%d.%m.%Y") for date in all_problem_data]
+print(dates)
 for index, value in enumerate(all_problem_cve_edited):
-    number.append(index + 1)
-    if counter[value] > 1:
-        indices = [i for i, x in enumerate(all_problem_cve_edited) if x == value]
-        dates_list = [dates[i] for i in indices]
-        min_date = min(dates_list)
-        if dates[index] == min_date:
-            status.append("Новый")
-        else:
-            if dates[index] > min_date:
-                status.append("Повтор")
-    else:
+    number_table.append(index + 1)
+    if value == "Zero-day":
         status.append("Новый")
+    else:
+        if counter[value] > 1:
+            indices = [i for i, x in enumerate(all_cve) if x == value]
+            dates_list = [dates[i] for i in indices]
+            min_date = min(dates_list)
+            if dates[index] == min_date:
+                status.append("Новый")
+            else:
+                if dates[index] > min_date:
+                    status.append("Повтор")
+        else:
+            status.append("Новый")
 
-df = pd.DataFrame({"№": number,
+check = len(all_problem_url)
+while len(number_table) != check:
+    number_table.append("-")
+while len(source) != check:
+    source.append("-")
+while len(all_problem_data) != check:
+    all_problem_data.append("-")
+while len(status) != check:
+    status.append("-")
+while len(all_problem_cve_edited) != check:
+    all_problem_cvss_edited.append("-")
+while len(all_problem_product) != check:
+    all_problem_product.append("-")
+
+df = pd.DataFrame({"№": number_table,
                    "Источник": source,
                    "Дата публикации": all_problem_data,
                    "Статус": status,
@@ -190,5 +237,14 @@ df = pd.DataFrame({"№": number,
                    "Продукт": all_problem_product,
                    "Ссылка": all_problem_url})
 
-with pd.ExcelWriter('problem_table.xlsx') as writer:
-    df.to_excel(writer, sheet_name='Проблемы', index=False)
+if action == 1:
+    today = date.today()
+    df_new = pd.concat([df_old, df])
+    with pd.ExcelWriter("problem_table.xlsx") as writer:
+        df_new.to_excel(writer, sheet_name='Проблемы', index=False)
+
+    with pd.ExcelWriter(str(today)) as writer:
+        df.to_excel(writer, sheet_name='Проблемы', index=False)
+else:
+    with pd.ExcelWriter("problem_table.xlsx") as writer:
+        df.to_excel(writer, sheet_name='Проблемы', index=False)
