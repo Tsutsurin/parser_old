@@ -7,7 +7,6 @@ from datetime import date
 import pandas as pd
 import os.path
 import time
-import requests
 import re
 
 number_table = []
@@ -26,8 +25,6 @@ action = int(input("Enter 1 if you want to find new CVE. Other numbers for manua
 if action != 1:
     num_pages = int(input("how many pages FSTEK? "))
     num_pages_nktski = int(input("how many pages NKTSKI? "))
-
-proxy = input("http://Login:password@address:port ")
 
 if action == 1:
     df_old = pd.read_excel("problem_table.xlsx")
@@ -107,19 +104,13 @@ for vul_link in all_problem_url:
     all_problem_product.append(problem_product)
     all_problem_data.append(tds[19].text.strip())
 
-driver.close()
-
 # NKTSKI
-proxy = {
-    "http": proxy,
-    "https": proxy
-}
-
 for page in range(1, num_pages_nktski + 1):
     url = "https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1=" + str(page)
-    link = requests.get(url, proxies=proxy)
-    soup = BeautifulSoup(link.text, "lxml")
     time.sleep(5)
+    driver.get(url)
+    html = driver.page_source
+    soup = BeautifulSoup(html, "lxml")
 
     problem_links = [elem.get("href") for elem in soup.find_all("a", title="Подробнее")]
     problem_url = ["https://safe-surf.ru" + link for link in problem_links]
@@ -178,6 +169,7 @@ for page in range(1, num_pages_nktski + 1):
         all_problem_url.append(problem_url[i])
         source.append("НКЦКИ")
 
+driver.close()
 for cve in all_problem_cve:
     cve = cve.replace("\u00a0", " ")
     matches = re.findall("CVE-\d{4}-\d{4,}", cve)
