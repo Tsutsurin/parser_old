@@ -28,11 +28,10 @@ if action != 1:
 
 if action == 1:
     df_old = pd.read_excel("problem_table.xlsx")
-    old_data = df_old["Дата публикации"].tolist()
     old_cve = df_old["CVE"].tolist()
     old_url = df_old["Ссылка"].tolist()
-    num_pages = 15
-    num_pages_nktski = 7
+    num_pages = 8
+    num_pages_nktski = 5
     if not os.path.exists("problem_table.xlsx"):
         action = 2
         num_pages = int(input("how many pages FSTEK? "))
@@ -51,21 +50,15 @@ driver = webdriver.Edge(options=options, service=service)
 
 for page in range(1, num_pages + 1):
     url = "https://bdu.fstec.ru/vul?sort=datv&page=" + str(page)
-
     driver.get(url)
-
     html = driver.page_source
-
     soup = BeautifulSoup(html, "lxml")
 
     tds = soup.find_all("td", class_="col-lg-3 col-xs-3")
-
     for td in tds:
         links = td.find_all("a", class_="confirm-vul")
-
         for link in links:
             href = link["href"]
-
             vul_link = "https://bdu.fstec.ru" + href
             if action == 1:
                 if vul_link in old_url:
@@ -77,15 +70,14 @@ for page in range(1, num_pages + 1):
 
 for vul_link in all_problem_url:
     driver.get(vul_link)
-
     html = driver.page_source
-
     soup = BeautifulSoup(html, "lxml")
-    tds = soup.find_all("td")
 
+    tds = soup.find_all("td")
     problem_product = tds[3].text.strip() + " " + tds[5].text.strip()
 
     cvss = tds[23].text.strip()
+
     pattern = r"\d+(?:,\d+)?"
     number = re.findall(pattern, cvss)
     size = len(number) - 1
@@ -124,13 +116,10 @@ for page in range(1, num_pages_nktski + 1):
             else:
                 counter.append(i)
 
-        print(counter)
         if not counter:
             counter = 0
-            print(counter)
         else:
             counter = counter[0]
-            print(counter)
     else:
         counter = len(problem_url)
 
@@ -170,6 +159,7 @@ for page in range(1, num_pages_nktski + 1):
         source.append("НКЦКИ")
 
 driver.close()
+
 for cve in all_problem_cve:
     cve = cve.replace("\u00a0", " ")
     matches = re.findall("CVE-\d{4}-\d{4,}", cve)
@@ -196,30 +186,31 @@ for j in range(len(all_problem_cvss)):
     all_problem_cvss_edited.append(all_problem_cvss[j])
 
 if action == 1:
-    all_cve = old_cve + all_problem_cve_edited
-    all_data = old_data + all_problem_data
-else:
-    all_data = all_problem_data
-    all_cve = all_problem_cve_edited
-
-counter = Counter(all_cve)
-dates = [datetime.strptime(date, "%d.%m.%Y") for date in all_data]
-for index, value in enumerate(all_problem_cve_edited):
-    number_table.append(index + 1)
-    if value == "Zero-day":
+    for i in range(len(all_problem_cve_edited)):
         status.append("Новый")
-    else:
-        if counter[value] > 1:
-            indices = [i for i, x in enumerate(all_cve) if x == value]
-            dates_list = [dates[i] for i in indices]
-            min_date = min(dates_list)
-            if dates[index] == min_date:
-                status.append("Новый")
-            else:
-                if dates[index] > min_date:
-                    status.append("Повтор")
-        else:
+        for j in old_cve:
+            if all_problem_cve_edited[i] == j:
+                status[i] = "Повтор"
+
+else:
+    counter = Counter(all_problem_cve_edited)
+    dates = [datetime.strptime(date, "%d.%m.%Y") for date in all_problem_data]
+    for index, value in enumerate(all_problem_cve_edited):
+        number_table.append(index + 1)
+        if value == "Zero-day":
             status.append("Новый")
+        else:
+            if counter[value] > 1:
+                indices = [i for i, x in enumerate(all_problem_cve_edited) if x == value]
+                dates_list = [dates[i] for i in indices]
+                min_date = min(dates_list)
+                if dates[index] == min_date:
+                    status.append("Новый")
+                else:
+                    if dates[index] > min_date:
+                        status.append("Повтор")
+            else:
+                status.append("Новый")
 
 check = len(all_problem_url)
 while len(number_table) != check:
