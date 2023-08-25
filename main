@@ -32,17 +32,17 @@ while action == 0:
         action = 0
 
 if action == 1:
-    df_old = pd.read_excel("Vulnerability table.xlsx")
-    old_cve = df_old["CVE"].tolist()
-    old_url = df_old["Ссылка"].tolist()
     if not os.path.exists("Vulnerability table.xlsx"):
         action = 2
         num_pages = int(input("how many pages FSTEK? "))
         num_pages_nktski = int(input("how many pages NKTSKI? "))
 
-service = Service(r'utilities/msedgedriver.exe')
-options = webdriver.EdgeOptions()
+    df_old = pd.read_excel("Vulnerability table.xlsx")
+    old_cve = df_old["CVE"].tolist()
+    old_url = df_old["Ссылка"].tolist()
 
+service = Service(r'msedgedriver.exe')
+options = webdriver.EdgeOptions()
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-infobars")
 options.add_argument("--start-maximized")
@@ -51,9 +51,10 @@ options.add_argument("--log-level=3")
 # options.add_argument("--headless")
 
 driver = webdriver.Edge(options=options, service=service)
+
 print("Please wait, the work has begun")
 for page in range(1, num_pages + 1):
-    url = "https://bdu.fstec.ru/vul?sort=datv&page=" + str(page)
+    url = ("https://bdu.fstec.ru/vul?sort=datv&page={0}".format(page))
     driver.get(url)
     html = driver.page_source
     soup = BeautifulSoup(html, "lxml")
@@ -63,12 +64,12 @@ for page in range(1, num_pages + 1):
         links = td.find_all("a", class_="confirm-vul")
         for link in links:
             href = link["href"]
-            vul_link = "https://bdu.fstec.ru" + href
+            vul_link = ("https://bdu.fstec.ru{0}".format(href))
             if action == 1:
                 if vul_link in old_url:
                     pass
                 else:
-                    print("New vulnerability found " + vul_link)
+                    print("New vulnerability found {0}".format(vul_link))
                     all_problem_url.append(vul_link)
             else:
                 all_problem_url.append(vul_link)
@@ -101,30 +102,24 @@ for vul_link in all_problem_url:
 
 # NKTSKI
 for page in range(1, num_pages_nktski + 1):
-    url = "https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1=" + str(page)
+    url = ("https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1={0}".format(page))
     time.sleep(5)
     driver.get(url)
     html = driver.page_source
     soup = BeautifulSoup(html, "lxml")
 
     problem_links = [elem.get("href") for elem in soup.find_all("a", title="Подробнее")]
+
     problem_url = ["https://safe-surf.ru" + link for link in problem_links]
+
     if action == 1:
-        size_for_repeat = len(problem_url)
         counter = []
-        for i in range(size_for_repeat):
+        for i in range(len(problem_url)):
             if problem_url[i] in old_url:
                 pass
             else:
-                print("New vulnerability found " + problem_url[i])
+                print("New vulnerability found {}".format(problem_url[i]))
                 counter.append(i)
-
-        if not counter:
-            counter = 0
-        else:
-            counter = counter[-1]
-    else:
-        counter = len(problem_url)
 
     problem_data = [elem.get_text().strip().replace("Дата бюллетеня", "") for elem in
                     soup.find_all(class_="cell-bulletin-nkcki cell-1")]
@@ -153,14 +148,22 @@ for page in range(1, num_pages_nktski + 1):
     problem_cvss = [elem.replace("\n", "") for elem in problem_cvss]
     problem_cvss = [re.sub("\\s+", " ", elem) for elem in problem_cvss]
 
-    for i in range(counter):
-        all_problem_cve.append(problem_cve[i])
-        all_problem_cvss.append(problem_cvss[i])
-        all_problem_data.append(problem_data[i])
-        all_problem_product.append(problem_product[i])
-        all_problem_url.append(problem_url[i])
-        source.append("НКЦКИ")
-
+    if action == 1:
+        for i in counter:
+            all_problem_cve.append(problem_cve[i])
+            all_problem_cvss.append(problem_cvss[i])
+            all_problem_data.append(problem_data[i])
+            all_problem_product.append(problem_product[i])
+            all_problem_url.append(problem_url[i])
+            source.append("НКЦКИ")
+    else:
+        all_problem_cve.extend(problem_cve)
+        all_problem_cvss.extend(problem_cvss)
+        all_problem_data.extend(problem_data)
+        all_problem_product.extend(problem_product)
+        all_problem_url.extend(problem_url)
+        for i in range(len(problem_url)):
+            source.append("НКЦКИ")
 driver.close()
 
 for cve in all_problem_cve:
@@ -233,17 +236,17 @@ df = pd.DataFrame({"Источник": source,
                    "CVSS": all_problem_cvss_edited,
                    "Продукт": all_problem_product,
                    "Ссылка": all_problem_url})
-
+print(df)
 if action == 1:
     today = date.today()
     df_new = pd.concat([df_old, df])
     with pd.ExcelWriter("Vulnerability table.xlsx") as writer:
         df_new.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Table overwritten")
-    with pd.ExcelWriter(str(today) + ".xlsx") as writer:
+        print("Table overwritten. Check Vulnerability table.xlsx")
+    with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
         df.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Daily table created")
+        print("Daily table created. Check {}.xlsx".format(str(today)))
 else:
     with pd.ExcelWriter("Vulnerability table.xlsx") as writer:
         df.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Table created")
+        print("Vulnerability table.xlsx created")
