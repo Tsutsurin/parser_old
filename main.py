@@ -21,22 +21,22 @@ all_problem_cvss_edited = []
 
 action = 0
 while action == 0:
-    print("Press 1 to search for new vulnerabilities ")
-    print("Press 2 to create a Vulnerabilly table")
+    print("Введите 1 для создания ежедневного отчета")
+    print("введите 2 для создания глобальной таблицы")
     action = int(input())
+    if action == 1:
+        if not os.path.exists("Vulnerability table.xlsx"):
+            print("Файл не найден. Поисхдит создание файла")
+            action = 2
+
     if action == 1 or action == 2:
-        num_pages = int(input("how many pages FSTEK? "))
-        num_pages_nktski = int(input("how many pages NKTSKI? "))
+        num_pages = int(input("Столько страниц ФСТЭКа просмотреть? "))
+        num_pages_nktski = int(input("Сколько страниц НКЦКИ просмотреть? "))
     else:
-        print("Something went wrong, use 1 or 2")
+        print("Ошибка ввода, ожидалось 1 или 2")
         action = 0
 
 if action == 1:
-    if not os.path.exists("Vulnerability table.xlsx"):
-        action = 2
-        num_pages = int(input("how many pages FSTEK? "))
-        num_pages_nktski = int(input("how many pages NKTSKI? "))
-
     df_old = pd.read_excel("Vulnerability table.xlsx")
     old_cve = df_old["CVE"].tolist()
     old_url = df_old["Ссылка"].tolist()
@@ -52,9 +52,9 @@ options.add_argument("--log-level=3")
 
 driver = webdriver.Edge(options=options, service=service)
 
-print("Please wait, the work has begun")
+print("\nПожалуйста ожидайте, программа начала работу")
 for page in range(1, num_pages + 1):
-    url = ("https://bdu.fstec.ru/vul?sort=datv&page={0}".format(page))
+    url = ("https://bdu.fstec.ru/vul?sort=datv&page={}".format(page))
     driver.get(url)
     html = driver.page_source
     soup = BeautifulSoup(html, "lxml")
@@ -64,16 +64,17 @@ for page in range(1, num_pages + 1):
         links = td.find_all("a", class_="confirm-vul")
         for link in links:
             href = link["href"]
-            vul_link = ("https://bdu.fstec.ru{0}".format(href))
+            vul_link = ("https://bdu.fstec.ru{}".format(href))
             if action == 1:
                 if vul_link in old_url:
                     pass
                 else:
-                    print("New vulnerability found {0}".format(vul_link))
+                    print("Уязвимость по ссылке {} найдена".format(vul_link))
                     all_problem_url.append(vul_link)
             else:
+                print("Уязвимость по ссылке {} найдена".format(vul_link))
                 all_problem_url.append(vul_link)
-
+print("Обработка ссылок займет некоторое время")
 for vul_link in all_problem_url:
     driver.get(vul_link)
     html = driver.page_source
@@ -102,7 +103,7 @@ for vul_link in all_problem_url:
 
 # NKTSKI
 for page in range(1, num_pages_nktski + 1):
-    url = ("https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1={0}".format(page))
+    url = ("https://safe-surf.ru/specialists/bulletins-nkcki/?PAGEN_1={}".format(page))
     time.sleep(5)
     driver.get(url)
     html = driver.page_source
@@ -118,8 +119,11 @@ for page in range(1, num_pages_nktski + 1):
             if problem_url[i] in old_url:
                 pass
             else:
-                print("New vulnerability found {}".format(problem_url[i]))
+                print("Уязвимость по ссылке {} найдена".format(problem_url[i]))
                 counter.append(i)
+    else:
+        for _ in range(len(problem_url)):
+            print("Уязвимость по ссылке {} найдена".format(problem_url[_]))
 
     problem_data = [elem.get_text().strip().replace("Дата бюллетеня", "") for elem in
                     soup.find_all(class_="cell-bulletin-nkcki cell-1")]
@@ -242,11 +246,11 @@ if action == 1:
     df_new = pd.concat([df_old, df])
     with pd.ExcelWriter("Vulnerability table.xlsx") as writer:
         df_new.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Table overwritten. Check Vulnerability table.xlsx")
+        print("Таблица Vulnerability table.xlsx  перезаписана")
     with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
         df.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Daily table created. Check {}.xlsx".format(str(today)))
+        print("Ежедневный отчет {}.xlsx создан".format(str(today)))
 else:
     with pd.ExcelWriter("Vulnerability table.xlsx") as writer:
         df.to_excel(writer, sheet_name='Проблемы', index=False)
-        print("Vulnerability table.xlsx created")
+        print("Таблица Vulnerability table.xlsx создана")
