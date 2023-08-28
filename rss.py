@@ -11,7 +11,7 @@ with open ('rss.txt', 'r') as f:
 date_input = input("По какую дату искать новости? ")
 date_input = dt.strptime(date_input, '%d.%m.%Y')
 
-service = Service(r'msedgedriver.exe')
+service = Service(r'utilities/msedgedriver.exe')
 options = webdriver.EdgeOptions()
 
 options.add_argument("--disable-blink-features=AutomationControlled")
