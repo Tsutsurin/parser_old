@@ -18,6 +18,7 @@ options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-infobars")
 options.add_argument("--start-maximized")
 options.add_argument("--ignore-certificate-errors")
+options.add_argument("--log-level=3")
 # options.add_argument("--headless")
 
 driver = webdriver.Edge(options=options, service=service)
