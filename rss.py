@@ -5,7 +5,7 @@ from selenium import webdriver
 from selenium.webdriver.edge.service import Service
 from bs4 import BeautifulSoup
 
-with open ('rss.txt', 'r') as f:
+with open ('utilities/rss.txt', 'r') as f:
     lines = [line.rstrip() for line in f]
 
 date_input = input("По какую дату искать новости? ")
