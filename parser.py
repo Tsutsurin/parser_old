@@ -19,24 +19,24 @@ all_problem_url = []
 all_problem_cve_edited = []
 all_problem_cvss_edited = []
 
-action = 0
-while action == 0:
+action = "0"
+while action == "0":
     print("Введите 1 для создания ежедневного отчета")
     print("введите 2 для создания глобальной таблицы")
-    action = int(input())
-    if action == 1:
+    action = input()
+    if action == "1":
         if not os.path.exists("Vulnerability table.xlsx"):
             print("Файл не найден. Поисхдит создание файла")
-            action = 2
+            action = "2"
 
-    if action == 1 or action == 2:
+    if action == "1" or action == "2":
         num_pages = int(input("Столько страниц ФСТЭКа просмотреть? "))
         num_pages_nktski = int(input("Сколько страниц НКЦКИ просмотреть? "))
     else:
         print("Ошибка ввода, ожидалось 1 или 2")
-        action = 0
+        action = "0"
 
-if action == 1:
+if action == "1":
     df_old = pd.read_excel("Vulnerability table.xlsx")
     old_cve = df_old["CVE"].tolist()
     old_url = df_old["Ссылка"].tolist()
@@ -113,7 +113,7 @@ for page in range(1, num_pages_nktski + 1):
 
     problem_url = ["https://safe-surf.ru" + link for link in problem_links]
 
-    if action == 1:
+    if action == "1":
         counter = []
         for i in range(len(problem_url)):
             if problem_url[i] in old_url:
@@ -152,7 +152,7 @@ for page in range(1, num_pages_nktski + 1):
     problem_cvss = [elem.replace("\n", "") for elem in problem_cvss]
     problem_cvss = [re.sub("\\s+", " ", elem) for elem in problem_cvss]
 
-    if action == 1:
+    if action == "1":
         for i in counter:
             all_problem_cve.append(problem_cve[i])
             all_problem_cvss.append(problem_cvss[i])
@@ -195,7 +195,7 @@ for j in range(len(all_problem_cvss)):
         all_problem_cvss[j] = "-"
     all_problem_cvss_edited.append(all_problem_cvss[j])
 
-if action == 1:
+if action == "1":
     for i in range(len(all_problem_cve_edited)):
         status.append("Новый")
         for j in old_cve:
@@ -241,7 +241,7 @@ df = pd.DataFrame({"Источник": source,
                    "Продукт": all_problem_product,
                    "Ссылка": all_problem_url})
 print(df)
-if action == 1:
+if action == "1":
     today = date.today()
     df_new = pd.concat([df_old, df])
     with pd.ExcelWriter("Vulnerability table.xlsx") as writer:
