@@ -41,7 +41,7 @@ if action == "1":
     old_cve = df_old["CVE"].tolist()
     old_url = df_old["Ссылка"].tolist()
 
-service = Service(r'msedgedriver.exe')
+service = Service(r'utilities/msedgedriver.exe')
 options = webdriver.EdgeOptions()
 options.add_argument("--disable-blink-features=AutomationControlled")
 options.add_argument("--disable-infobars")
