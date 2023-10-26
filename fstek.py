@@ -1,20 +1,19 @@
 from selenium import webdriver
 from selenium.webdriver.edge.service import Service
+from selenium.webdriver.edge.options import Options
 from bs4 import BeautifulSoup
 from datetime import date
 import pandas as pd
 import re
 
 service = Service(r'utilities/msedgedriver.exe')
-options = webdriver.EdgeOptions()
-options.add_argument("--disable-blink-features=AutomationControlled")
-options.add_argument("--disable-infobars")
-options.add_argument("--start-maximized")
-options.add_argument("--ignore-certificate-errors")
-options.add_argument("--log-level=3")
-# options.add_argument("--headless")
-
-driver = webdriver.Edge(options=options, service=service)
+options = Options()
+options.add_argument("disable-blink-features=AutomationControlled")
+options.add_argument("disable-infobars")
+options.add_argument("start-maximized")
+options.add_argument("ignore-certificate-errors")
+options.add_argument("log-level=3")
+driver = webdriver.Edge(options = options, service=service)
 
 source = []
 all_problem_data = []
