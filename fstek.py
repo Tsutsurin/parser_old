@@ -67,6 +67,8 @@ for vul_link in all_problem_url:
 
     all_problem_data.append(tds[19].text.strip())
 
+driver.close()
+
 for cve in all_problem_cve:
     cve = cve.replace("\u00a0", " ")
     matches = re.findall("CVE-\d{4}-\d{4,}", cve)
