@@ -7,14 +7,14 @@ import time
 import pandas as pd
 import re
 
-service = Service(r'utilities/msedgedriver.exe')
+service = Service(r'msedgedriver.exe')
 options = Options()
 options.add_argument("disable-blink-features=AutomationControlled")
 options.add_argument("disable-infobars")
 options.add_argument("start-maximized")
 options.add_argument("ignore-certificate-errors")
 options.add_argument("log-level=3")
-driver = webdriver.Edge(options = options, service=service)
+driver = webdriver.Edge(options=options, service=service)
 
 source = []
 all_problem_data = []
@@ -121,6 +121,7 @@ df = pd.DataFrame({"Источник": source,
                    "Ссылка": all_problem_url})
 
 today = date.today()
+today = today.strftime('%d-%m-%Y') + " НКЦКИ"
 with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
-        df.to_excel(writer, sheet_name='ФСТЭК', index=False)
-        print("Ежедневный отчет {}.xlsx создан".format(str(today)))
+    df.to_excel(writer, sheet_name='ФСТЭК', index=False)
+    print("Ежедневный отчет {}.xlsx создан".format(str(today)))
