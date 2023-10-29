@@ -6,14 +6,14 @@ from datetime import date
 import pandas as pd
 import re
 
-service = Service(r'utilities/msedgedriver.exe')
+service = Service(r'msedgedriver.exe')
 options = Options()
 options.add_argument("disable-blink-features=AutomationControlled")
 options.add_argument("disable-infobars")
 options.add_argument("start-maximized")
 options.add_argument("ignore-certificate-errors")
 options.add_argument("log-level=3")
-driver = webdriver.Edge(options = options, service=service)
+driver = webdriver.Edge(options=options, service=service)
 
 source = []
 all_problem_data = []
@@ -24,7 +24,7 @@ all_problem_url = []
 all_problem_cve_edited = []
 all_problem_cvss_edited = []
 
-num_pages = int(input("Склько страниц ФСТЭКа нужно просмотреть?"))
+num_pages = int(input("Склько страниц ФСТЭКа нужно просмотреть? "))
 
 for page in range(1, num_pages + 1):
     url = ("https://bdu.fstec.ru/vul?sort=identifier&page={}".format(page))
@@ -112,6 +112,7 @@ df = pd.DataFrame({"Источник": source,
                    "Ссылка": all_problem_url})
 
 today = date.today()
+today = today.strftime('%d-%m-%Y') + " ФСТЭК"
 with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
-        df.to_excel(writer, sheet_name='ФСТЭК', index=False)
-        print("Ежедневный отчет {}.xlsx создан".format(str(today)))
+    df.to_excel(writer, sheet_name='ФСТЭК', index=False)
+    print("Ежедневный отчет {}.xlsx создан".format(str(today)))
