@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 import re
 
-service = Service(r'msedgedriver.exe')
+service = Service(r'utilities/msedgedriver.exe')
 options = Options()
 options.add_argument("disable-blink-features=AutomationControlled")
 options.add_argument("disable-infobars")
