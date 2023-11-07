@@ -75,7 +75,7 @@ df = pd.DataFrame({"Источник": source,
                    "Ссылка": all_problem_url})
 
 today = date.today()
-today = today.strftime("%d-%m-%Y") + " ZDE"
+today = today.strftime("%d-%m-%Y") + " ZDI"
 with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
-    df.to_excel(writer, sheet_name='ZDE', index=False)
+    df.to_excel(writer, sheet_name='ZDI', index=False)
     print("Ежедневный отчет {}.xlsx создан".format(str(today)))
