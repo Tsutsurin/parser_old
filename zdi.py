@@ -1,81 +1,63 @@
-from selenium import webdriver
-from selenium.webdriver.edge.service import Service
-from selenium.webdriver.edge.options import Options
-from bs4 import BeautifulSoup
-from datetime import date
-from datetime import datetime
+import functions
 import pandas as pd
-import re
+import requests
 
-service = Service(r'utilities/msedgedriver.exe')
-options = Options()
-options.add_argument("disable-blink-features=AutomationControlled")
-options.add_argument("disable-infobars")
-options.add_argument("start-maximized")
-options.add_argument("ignore-certificate-errors")
-options.add_argument("log-level=3")
-driver = webdriver.Edge(options=options, service=service)
 
-source = []
-all_problem_data = []
-all_problem_cve = []
-all_problem_cvss = []
-all_problem_url = []
-all_problem_product = []
+def main():
+    constant_link = f'https://www.zerodayinitiative.com/advisories/ZDI-'
 
-url = ("https://www.zerodayinitiative.com/rss/published/2023/")
-driver.get(url)
-html = driver.page_source
-soup = BeautifulSoup(html, "html.parser")
-items = soup.find_all("item")
-for item in items:
-    source.append(item.find("guid").text)
-    date_time_str = item.find("pubdate").text
-    date_time_obj = datetime.strptime(date_time_str, "%a, %d %b %Y %X %z")
-    date_edited = date_time_obj.date()
-    all_problem_data.append(date_edited.strftime("%d.%m.%Y"))
+    vul_link = constant_link + functions.zdi_url() + '/'
 
-    link_tg = item.find("link")
-    all_problem_url.append(link_tg.next_sibling)
+    driver = functions.open_msdriver()
+    driver.minimize_window()
 
-    title = item.find("title").text
-    start = title.find(":") + 1
-    end = len(title) - 1
-    all_problem_product.append(title[start:end])
+    all = []
+    stoper = True
+    source = 'ZDI'
+    counter = 0
 
-    description = item.find("description").text
-    matches = re.findall("CVE-\d{4}-\d{4,}", description)
-    if matches:
-        match = matches[0]
-        all_problem_cve.append(match)
-    else:
-        all_problem_cve.append("zero-day")
+    df = pd.DataFrame(
+        {'№': [''], 'Источник': [''], 'Дата публикации': [''], 'CVE': [''], 'CVSS': [''], 'Продукты': [''], 'Ссылки': ['']})
 
-    if "CVSS rating" in description:
-        rating =  re.search(r"\d+\.\d+", description).group()
-        all_problem_cvss.append(rating)
+    while stoper:
+        try:
+            print(f'Обрабатывается уязвимость {vul_link}')
 
-driver.close()
+            soup = functions.get_soup(driver, vul_link, None)
 
-check = len(all_problem_url)
-while len(source) != check:
-    source.append("-")
-while len(all_problem_data) != check:
-    all_problem_data.append("-")
-while len(all_problem_cve) != check:
-    all_problem_cvss.append("-")
-while len(all_problem_product) != check:
-    all_problem_product.append("-")
+            data = soup.find('data').text
+            
+            tbs = soup.find('tbody')
 
-df = pd.DataFrame({"Источник": source,
-                   "Дата публикации": all_problem_data,
-                   "CVE": all_problem_cve,
-                   "CVSS": all_problem_cvss,
-                   "Продукт": all_problem_product,
-                   "Ссылка": all_problem_url})
+            for tb in tbs:
+                all.append(tb.text)
 
-today = date.today()
-today = today.strftime("%d-%m-%Y") + " ZDI"
-with pd.ExcelWriter("{}.xlsx".format(str(today))) as writer:
-    df.to_excel(writer, sheet_name='ZDI', index=False)
-    print("Ежедневный отчет {}.xlsx создан".format(str(today)))
+            cve = all[0].replace('\n', '')
+
+            cvss = all[2].replace('\n', '')
+
+            product = all[4].replace('AFFECTED VENDORS', '').replace('\n', '') + ' ' + all[6].replace('AFFECTED PRODUCTS', '').replace('\n', '')
+
+            functions.pd_placeholder(df, counter, source, data, cve, cvss, product, vul_link)
+
+            counter += 1
+            
+            vul_link = constant_link + functions.create_link_fstek(vul_link) + '/'
+
+        except IndexError:
+            if counter == 0:
+                print('Ошибка ввода данных. Такая страница не найдена\n')
+                vul_link = constant_link + functions.zdi_url() + '/'
+                counter = 0
+                pass
+            else:
+                stoper = False
+
+    driver.close()
+    
+    functions.do_excel(source, df)
+
+    input()
+
+
+main()
